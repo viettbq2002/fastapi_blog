@@ -1,7 +1,7 @@
 from schemas.blog import CreateBlog, UpdateBlog
 from sqlalchemy.orm import Session
 from db.models.blog import Blog
-from sqlalchemy.orm import joinedload
+
 
 
 def create_new_blog(payload: CreateBlog, db: Session, author_id: int):
