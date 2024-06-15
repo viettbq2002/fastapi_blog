@@ -3,7 +3,6 @@ from sqlalchemy.orm import Session
 from db.models.blog import Blog
 
 
-
 def create_new_blog(payload: CreateBlog, db: Session, author_id: int):
     blog = Blog(
         **payload.dict(), author_id=author_id
@@ -59,3 +58,5 @@ def delete_blog(id: int, author_id: int, db: Session):
 
     db.commit()
     return {"message": "Blog deleted"}
+
+

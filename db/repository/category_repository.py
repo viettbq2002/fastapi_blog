@@ -29,3 +29,6 @@ def add_blog(category_id: int, blog_id: int, db: Session):
     db.add(category)
     db.commit()
     db.refresh(category)
+
+
+    
