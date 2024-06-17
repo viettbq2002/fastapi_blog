@@ -1,0 +1,19 @@
+version: '3.11.5'
+services:
+  web:
+    container_name: web-api
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - NAME=World
+  db:
+    container_name: db
+    image: postgres
+
+    ports:
+      - "5432:5432"
+    shm_size: 128mb
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=123456

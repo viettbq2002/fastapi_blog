@@ -3,12 +3,17 @@ from db.models.user import Role
 from db.repository.user_repository import create_new_user, get_user_by_email
 from db.session import get_db
 from fastapi import APIRouter, Depends, status, HTTPException
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import (
+    HTTPAuthorizationCredentials,
+    HTTPBearer,
+    OAuth2PasswordBearer,
+    OAuth2PasswordRequestForm,
+)
 from sqlalchemy.orm import Session
 from core.sercurity import create_access_token
 from core.config import settings
 from schemas.token import Token
-from schemas.user import ShowUser, UserCreate
+from schemas.user import ShowUser, UserCreate, UserLogin
 from jose import JWTError, jwt
 
 router = APIRouter()
@@ -25,10 +30,10 @@ def authenticate_user(email: str, password: str, db: Session):
 
 @router.post("/login", response_model=Token)
 def login_for_access_token(
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    payload: UserLogin,
     db: Session = Depends(get_db),
 ):
-    user = authenticate_user(form_data.username, form_data.password, db)
+    user = authenticate_user(payload.email, payload.password, db)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -55,11 +60,15 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db)):
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+auth_scheme = HTTPBearer()
 
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+    headers: HTTPAuthorizationCredentials = Depends(auth_scheme),
+    db: Session = Depends(get_db),
 ):
+    token = headers.credentials
+    print(token)
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
