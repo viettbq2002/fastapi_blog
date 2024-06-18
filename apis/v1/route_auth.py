@@ -2,12 +2,10 @@ from core.hashing import Hasher
 from db.models.user import Role
 from db.repository.user_repository import create_new_user, get_user_by_email
 from db.session import get_db
-from fastapi import APIRouter, Depends, status, HTTPException,Cookie
+from fastapi import APIRouter, Depends, Request, Response, status, HTTPException
 from fastapi.security import (
     HTTPAuthorizationCredentials,
     HTTPBearer,
-    OAuth2PasswordBearer,
-    OAuth2PasswordRequestForm,
 )
 from sqlalchemy.orm import Session
 from core.sercurity import create_access_token
@@ -15,6 +13,14 @@ from core.config import settings
 from schemas.token import Token
 from schemas.user import ShowUser, UserCreate, UserLogin
 from jose import JWTError, jwt
+from typing import Any, Dict, List, Optional, Union
+
+from fastapi.exceptions import HTTPException
+from fastapi.openapi.models import OAuth2 as OAuth2Model
+from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
+from fastapi.security.base import SecurityBase
+from starlette.requests import Request
+from starlette.status import HTTP_403_FORBIDDEN
 
 router = APIRouter()
 
@@ -30,6 +36,7 @@ def authenticate_user(email: str, password: str, db: Session):
 
 @router.post("/login", response_model=Token)
 def login_for_access_token(
+    response: Response,
     payload: UserLogin,
     db: Session = Depends(get_db),
 ):
@@ -41,6 +48,7 @@ def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token = create_access_token(data={"sub": user.email})
+    response.set_cookie("token", value=access_token, httponly=True)
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -59,7 +67,63 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db)):
     return user
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+def get_cookie_token(request: Request):
+    token = request.cookies.get("token")
+    return token
+
+
+class OAuth2Cookie(SecurityBase):
+    def __init__(
+        self,
+        *,
+        flows: Union[OAuthFlowsModel, Dict[str, Dict[str, Any]]] = OAuthFlowsModel(),
+        scheme_name: Optional[str] = None,
+        description: Optional[str] = None,
+        auto_error: bool = True,
+    ):
+        self.model = OAuth2Model(flows=flows, description=description)
+        self.scheme_name = scheme_name or self.__class__.__name__
+        self.auto_error = auto_error
+
+    async def __call__(self, request: Request) -> Optional[str]:
+        authorization = request.cookies.get("token")
+        if not authorization:
+            if self.auto_error:
+                raise HTTPException(
+                    status_code=HTTP_403_FORBIDDEN, detail="Not authenticated"
+                )
+            else:
+                return None
+        return authorization
+
+
+cookie_auth_schema = OAuth2Cookie(
+    description="Cần cookie để auth", scheme_name="cút ki"
+)
+
+
+@router.get(
+    "/test-get-cookie",
+)
+async def get_token(token: str | None = Depends(cookie_auth_schema)):
+
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    if token is None:
+        raise credentials_exception
+    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    return {"token": token}
+
+
+@router.delete("/logout")
+def logout(response: Response):
+    response.delete_cookie("token")
+    return {"message": "logout success"}
+
+
 auth_scheme = HTTPBearer()
 
 
@@ -93,7 +157,3 @@ def check_admin(current_user=Depends(get_current_user)):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not has perrmission to perform requested action",
         )
-
-
-    
-    
