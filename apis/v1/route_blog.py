@@ -147,6 +147,7 @@ async def update_a_blog(
         - HTTPException: If the blog with the given ID is not found.
 
     """
+    
     blog = update_blog(id, blog, author_id=current_user.id, db=db)
     if not blog:
         raise HTTPException(
@@ -204,5 +205,3 @@ async def delete_a_blog(
         )
 
     return message
-
-
