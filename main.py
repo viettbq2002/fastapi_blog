@@ -22,4 +22,5 @@ app.add_middleware(
 
 @app.get("/")
 def root():
+    print(settings.DATABASE_URL)
     return {"message": "Your API Worked"}

@@ -2,7 +2,7 @@ from core.hashing import Hasher
 from db.models.user import Role
 from db.repository.user_repository import create_new_user, get_user_by_email
 from db.session import get_db
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException,Cookie
 from fastapi.security import (
     HTTPAuthorizationCredentials,
     HTTPBearer,
@@ -93,3 +93,7 @@ def check_admin(current_user=Depends(get_current_user)):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not has perrmission to perform requested action",
         )
+
+
+    
+    

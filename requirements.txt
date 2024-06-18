@@ -5,6 +5,7 @@ uvicorn==0.22.0
 SQLAlchemy==2.0.13
 psycopg2==2.9.6    #linux/mac user use: psycopg2-binary==2.9.6
 alembic==1.11.1
+alembic-postgresql-enum==1.2.0
 python-dotenv==1.0.0
 pydantic[email]
 #hashsing

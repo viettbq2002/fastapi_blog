@@ -8,12 +8,20 @@ services:
     environment:
       - NAME=World
   db:
-    container_name: db
+    container_name: postgre-db
     image: postgres
 
     ports:
       - "5432:5432"
     shm_size: 128mb
     environment:
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_USER=123456
+      - POSTGRES_PASSWORD=123456
+      - POSTGRES_DB=blogdb
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=quocviet@gmail.com
+      - PGADMIN_DEFAULT_PASSWORD=123456
+    ports:
+      - "80:80"

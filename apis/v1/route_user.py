@@ -2,9 +2,9 @@ from fastapi import APIRouter, status, HTTPException
 from sqlalchemy.orm import Session
 from fastapi import Depends
 from apis.v1.route_auth import check_admin
-from schemas.user import ShowUser
+from schemas.user import ShowAllUser, ShowUser
 from db.session import get_db
-from db.repository.user_repository import assign_admin, get_user_by_id
+from db.repository.user_repository import assign_admin, get_user_by_id, get_users
 
 router = APIRouter()
 
@@ -36,6 +36,12 @@ async def assign_user_to_admin(
         )
 
     return {"message": "User assigned to admin"}
+
+
+@router.get("/", response_model=list[ShowAllUser])
+async def get_all_users(db: Session = Depends(get_db)):
+    users = get_users(db)
+    return users
 
 
 @router.get(

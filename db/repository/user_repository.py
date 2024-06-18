@@ -32,3 +32,7 @@ def assign_admin(id: int, db: Session):
     db.add(user)
     db.commit()
     return user
+
+
+def get_users(db: Session):
+    return db.query(User).all()
