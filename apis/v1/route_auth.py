@@ -24,6 +24,12 @@ from starlette.status import HTTP_403_FORBIDDEN
 
 router = APIRouter()
 
+credentials_exception = HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail="Could not validate credentials",
+    headers={"WWW-Authenticate": "Bearer"},
+)
+
 
 def authenticate_user(email: str, password: str, db: Session):
     user = get_user_by_email(email, db)
@@ -102,20 +108,21 @@ cookie_auth_schema = OAuth2Cookie(
 )
 
 
-@router.get(
-    "/test-get-cookie",
-)
-async def get_token(token: str | None = Depends(cookie_auth_schema)):
+def get_user_from_jwt(token: str, db: Session = Depends(get_db)):
 
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    if token is None:
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        email = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+    except JWTError:
         raise credentials_exception
-    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-    return {"token": token}
+    user = get_user_by_email(email, db)
+    if user is None:
+        raise credentials_exception
+    return user
 
 
 @router.delete("/logout")
@@ -138,9 +145,11 @@ def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-    email: str = payload.get("sub")
     try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
     except JWTError:
