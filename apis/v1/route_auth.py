@@ -14,13 +14,13 @@ from schemas.token import Token
 from schemas.user import ShowUser, UserCreate, UserLogin
 from jose import JWTError, jwt
 from typing import Any, Dict, List, Optional, Union
-
+from fastapi.security.utils import get_authorization_scheme_param
 from fastapi.exceptions import HTTPException
 from fastapi.openapi.models import OAuth2 as OAuth2Model
 from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
 from fastapi.security.base import SecurityBase
 from starlette.requests import Request
-from starlette.status import HTTP_403_FORBIDDEN
+from starlette.status import HTTP_401_UNAUTHORIZED
 
 router = APIRouter()
 
@@ -54,7 +54,7 @@ def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token = create_access_token(data={"sub": user.email})
-    response.set_cookie("token", value=access_token, httponly=True)
+    response.set_cookie("token", value=f"Bearer {access_token}", httponly=True)
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -93,18 +93,19 @@ class OAuth2Cookie(SecurityBase):
 
     async def __call__(self, request: Request) -> Optional[str]:
         authorization = request.cookies.get("token")
-        if not authorization:
+        scheme, param = get_authorization_scheme_param(authorization)
+        if not authorization or scheme.lower() != "bearer":
             if self.auto_error:
                 raise HTTPException(
-                    status_code=HTTP_403_FORBIDDEN, detail="Not authenticated"
+                    status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated"
                 )
             else:
                 return None
-        return authorization
+        return param
 
 
 cookie_auth_schema = OAuth2Cookie(
-    description="Cần cookie để auth", scheme_name="cút ki"
+    description="Cần cookie để auth", scheme_name="Bearer"
 )
 
 
@@ -132,6 +133,11 @@ def logout(response: Response):
 
 
 auth_scheme = HTTPBearer()
+
+
+@router.get("/cookie-auth")
+def cookie_auth(token: str = Depends(cookie_auth_schema)):
+    return {"your_token": token}
 
 
 def get_current_user(
