@@ -1,8 +1,8 @@
 from core.hashing import Hasher
-from db.models.user import Role
+from db.models.user import Role, User
 from db.repository.user_repository import create_new_user, get_user_by_email
 from db.session import get_db
-from fastapi import APIRouter, Depends, Request, Response, status, HTTPException
+from fastapi import APIRouter, Depends, Response, status, HTTPException
 from fastapi.security import (
     HTTPAuthorizationCredentials,
     HTTPBearer,
@@ -13,14 +13,9 @@ from core.config import settings
 from schemas.token import Token
 from schemas.user import ShowUser, UserCreate, UserLogin
 from jose import JWTError, jwt
-from typing import Any, Dict, List, Optional, Union
-from fastapi.security.utils import get_authorization_scheme_param
 from fastapi.exceptions import HTTPException
-from fastapi.openapi.models import OAuth2 as OAuth2Model
-from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
-from fastapi.security.base import SecurityBase
-from starlette.requests import Request
-from starlette.status import HTTP_401_UNAUTHORIZED
+
+from services.user_service import get_user_from_cookie
 
 router = APIRouter()
 
@@ -73,59 +68,6 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db)):
     return user
 
 
-def get_cookie_token(request: Request):
-    token = request.cookies.get("token")
-    return token
-
-
-class OAuth2Cookie(SecurityBase):
-    def __init__(
-        self,
-        *,
-        flows: Union[OAuthFlowsModel, Dict[str, Dict[str, Any]]] = OAuthFlowsModel(),
-        scheme_name: Optional[str] = None,
-        description: Optional[str] = None,
-        auto_error: bool = True,
-    ):
-        self.model = OAuth2Model(flows=flows, description=description)
-        self.scheme_name = scheme_name or self.__class__.__name__
-        self.auto_error = auto_error
-
-    async def __call__(self, request: Request) -> Optional[str]:
-        authorization = request.cookies.get("token")
-        scheme, param = get_authorization_scheme_param(authorization)
-        if not authorization or scheme.lower() != "bearer":
-            if self.auto_error:
-                raise HTTPException(
-                    status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated"
-                )
-            else:
-                return None
-        return param
-
-
-cookie_auth_schema = OAuth2Cookie(
-    description="Cần cookie để auth", scheme_name="Bearer"
-)
-
-
-def get_user_from_jwt(token: str, db: Session = Depends(get_db)):
-
-    try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
-        email = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-    user = get_user_by_email(email, db)
-    if user is None:
-        raise credentials_exception
-    return user
-
-
 @router.delete("/logout")
 def logout(response: Response):
     response.delete_cookie("token")
@@ -133,11 +75,6 @@ def logout(response: Response):
 
 
 auth_scheme = HTTPBearer()
-
-
-@router.get("/cookie-auth")
-def cookie_auth(token: str = Depends(cookie_auth_schema)):
-    return {"your_token": token}
 
 
 def get_current_user(
@@ -171,4 +108,12 @@ def check_admin(current_user=Depends(get_current_user)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not has perrmission to perform requested action",
+        )
+
+
+def check_admin_cookie(current_user: User = Depends(get_user_from_cookie)):
+    if current_user.role != Role.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not has permission to perform requested action",
         )

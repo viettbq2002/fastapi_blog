@@ -1,11 +1,12 @@
 from fastapi import APIRouter, status, HTTPException
 from sqlalchemy.orm import Session
 from fastapi import Depends
-from apis.v1.route_auth import check_admin, get_current_user
+from apis.v1.route_auth import check_admin, check_admin_cookie, get_current_user
 from db.models.user import User
 from schemas.user import ShowAllUser, ShowUser
 from db.session import get_db
 from db.repository.user_repository import assign_admin, get_user_by_id, get_users
+from services.user_service import get_user_from_cookie
 
 router = APIRouter()
 
@@ -39,14 +40,31 @@ async def assign_user_to_admin(
     return {"message": "User assigned to admin"}
 
 
-@router.get("", response_model=list[ShowAllUser])
+@router.get(
+    "", response_model=list[ShowAllUser], dependencies=[Depends(check_admin_cookie)]
+)
 async def get_all_users(db: Session = Depends(get_db)):
     users = get_users(db)
     return users
 
 
-@router.get("/me", response_model=ShowUser)
+@router.get("/cookie/me", response_model=ShowAllUser)
+def cookie_auth(user: User = Depends(get_user_from_cookie)):
+    return user
+
+
+@router.get("/me", response_model=ShowAllUser)
 async def get_login_user(current_user: User = Depends(get_current_user)):
+    """
+    Retrieves a current login user
+
+    Parameters:
+        id (int): The ID of the user.
+        db (Session, optional): The database session. Defaults to Depends(get_db).
+
+    Returns:
+        ShowUser
+    """
     return current_user
 
 
