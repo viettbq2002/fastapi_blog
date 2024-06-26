@@ -1,4 +1,4 @@
-from apis.v1.route_auth import check_admin
+from core.sercurity import check_admin
 from db.repository.category_repository import (
     create_category,
     get_category_by_id,
@@ -60,7 +60,7 @@ async def get_all_category(db: Session = Depends(get_db)):
 @router.get("/{id}", response_model=ShowCategoryDetail)
 async def get_category_detail(id: int, db: Session = Depends(get_db)):
     category = get_category_by_id(id, db)
-  
+
     if category is None:
         raise HTTPException(status_code=404, detail="Category not found")
     return category

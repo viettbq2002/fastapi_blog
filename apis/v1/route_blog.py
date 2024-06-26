@@ -1,5 +1,4 @@
 from fastapi import Depends, APIRouter, HTTPException, status
-from apis.v1.route_auth import get_current_user
 from db.models.user import User
 from db.repository.blog_repository import (
     active_blog,
@@ -13,6 +12,7 @@ from db.session import get_db
 from sqlalchemy.orm import Session
 from schemas.blog import CreateBlog, UpdateBlog
 from schemas.show_blog import ShowBlog
+from services.user_service import get_current_user
 
 router = APIRouter()
 

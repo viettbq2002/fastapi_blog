@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Request, Response, status, HTTPException
 from sqlalchemy.orm import Session
 from core.config import settings
 from schemas.token import Token
-from jose import JWTError, jwt
+from jose import ExpiredSignatureError, JWTError, jwt
 from typing import Any, Dict, List, Optional, Union
 from fastapi.security.utils import get_authorization_scheme_param
 from fastapi.exceptions import HTTPException
@@ -54,10 +54,16 @@ credentials_exception = HTTPException(
     detail="Could not validate credentials",
     headers={"WWW-Authenticate": "Bearer"},
 )
+token_exepired_exception = HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail="Token Expired",
+    headers={"WWW-Authenticate": "Bearer"},
+)
 
 
-def get_user_from_cookie(
-    token: str = Depends(cookie_auth_schema), db: Session = Depends(get_db)
+def get_current_user(
+    token: str = Depends(cookie_auth_schema),
+    db: Session = Depends(get_db),
 ):
 
     try:
@@ -67,6 +73,8 @@ def get_user_from_cookie(
         email = payload.get("sub")
         if email is None:
             raise credentials_exception
+    except ExpiredSignatureError:
+        raise ExpiredSignatureError
     except JWTError:
         raise credentials_exception
     user = get_user_by_email(email, db)
