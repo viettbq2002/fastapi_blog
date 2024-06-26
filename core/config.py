@@ -20,6 +20,8 @@ class Settings:
     SECRET_KEY = os.getenv("SECRET_KEY")
     ALGORITHM = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES = 15
+    JWT_ISSUER: str = os.getenv("JWT_ISSUER")
+    JWT_AUDIENCE: str = os.getenv("JWT_AUDIENCE")
 
 
 settings = Settings()

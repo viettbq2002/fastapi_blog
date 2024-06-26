@@ -1,4 +1,5 @@
 from core.hashing import Hasher
+from db.models.auth import JwtToken
 from db.repository.user_repository import create_new_user, get_user_by_email
 from db.session import get_db
 from fastapi import APIRouter, Depends, Response, status, HTTPException
@@ -41,9 +42,8 @@ def login_for_access_token(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = create_access_token(
-        data={"sub": user.email, "role": user.role.value}
-    )
+    jwt_payload = JwtToken(role=user.role.value, sub=user.email).dict()
+    access_token = create_access_token(data=jwt_payload)
     response.set_cookie("token", value=f"Bearer {access_token}", httponly=True)
     return {"access_token": access_token, "token_type": "bearer"}
 
