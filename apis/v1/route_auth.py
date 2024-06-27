@@ -5,11 +5,13 @@ from db.session import get_db
 from fastapi import APIRouter, Depends, Response, status, HTTPException
 
 from sqlalchemy.orm import Session
-from core.sercurity import create_access_token
+from core.sercurity import refresh_token, create_token
 from schemas.token import Token
 from schemas.user import ShowUser, UserCreate, UserLogin
 from fastapi.exceptions import HTTPException
+from core.config import settings
 
+from datetime import timedelta
 
 router = APIRouter()
 
@@ -43,9 +45,19 @@ def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     jwt_payload = JwtToken(role=user.role.value, sub=user.email).dict()
-    access_token = create_access_token(data=jwt_payload)
+    access_token = create_token(data=jwt_payload, type="access")
+    refresh_token = create_token(
+        data=jwt_payload,
+        type="refresh",
+        expires_delta=timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+    )
     response.set_cookie("token", value=f"Bearer {access_token}", httponly=True)
-    return {"access_token": access_token, "token_type": "bearer"}
+    response.set_cookie("refresh_token", value=refresh_token, httponly=True)
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }
 
 
 @router.post("/register", response_model=ShowUser, status_code=status.HTTP_201_CREATED)
@@ -67,3 +79,13 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db)):
 def logout(response: Response):
     response.delete_cookie(httponly=True, key="token")
     return {"message": "logout success"}
+
+
+@router.post("/refresh")
+def create_a_new_access_token(
+    response: Response, refresh_handler=Depends(refresh_token)
+):
+    new_token = refresh_handler
+    response.set_cookie("token", value=f"Bearer {new_token}", httponly=True)
+
+    return {"message": "token refresh successfully"}

@@ -74,8 +74,9 @@ def get_current_user(
             audience=settings.JWT_AUDIENCE,
             issuer=settings.JWT_ISSUER,
         )
+        token_type = payload.get("type")
         email = payload.get("sub")
-        if email is None:
+        if email is None or token_type != "access":
             raise credentials_exception
     except ExpiredSignatureError:
         raise ExpiredSignatureError
