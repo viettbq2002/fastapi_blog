@@ -3,9 +3,9 @@ from typing import Generator
 
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+from starlette.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 
 import sys
 import os
@@ -44,7 +44,7 @@ def app() -> Generator[FastAPI, Any, None]:
 
 
 @pytest.fixture(scope="function")
-def db_session(app: FastAPI):
+def db_session():
     connection = engine.connect()
     transaction = connection.begin()
     session = SessionTesting(bind=connection)
@@ -55,7 +55,7 @@ def db_session(app: FastAPI):
 
 
 @pytest.fixture(scope="function")
-def client(app: FastAPI, db_session) -> Generator[TestClient, Any, None]:
+def client(app: FastAPI, db_session: Session) -> Generator[TestClient, Any, None]:
     """
     Create a new FastAPI TestClient that uses the `db_session` fixture to override
     the `get_db` dependency that is injected into routes.
@@ -65,7 +65,7 @@ def client(app: FastAPI, db_session) -> Generator[TestClient, Any, None]:
         try:
             yield db_session
         finally:
-            pass
+            db_session.close()
 
     app.dependency_overrides[get_db] = _get_test_db
     with TestClient(app) as client:

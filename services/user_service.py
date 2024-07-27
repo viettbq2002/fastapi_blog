@@ -16,6 +16,7 @@ from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
 from fastapi.security.base import SecurityBase
 from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 
 class OAuth2Cookie(SecurityBase):
@@ -41,7 +42,7 @@ class OAuth2Cookie(SecurityBase):
                 )
             else:
                 return None
-        return param
+        return param 
 
 
 cookie_auth_schema = OAuth2Cookie(
